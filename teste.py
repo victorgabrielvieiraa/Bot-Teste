@@ -13,10 +13,12 @@ def fetch_matches_from_page(page_number):
     response = requests.get(url)
 
     if response.status_code == 200:
+        print(f"Successfully fetched page {page_number}")
         soup = BeautifulSoup(response.content, 'html.parser')
         tables = soup.find_all('table')
 
         if tables:
+            print(f"Found {len(tables)} tables on page {page_number}")
             table = tables[0]
             matches = []
 
@@ -52,14 +54,17 @@ def fetch_matches_from_page(page_number):
 
             return matches
         else:
+            print(f"Nenhuma tabela encontrada na página {page_number}.")
             return []
     else:
+        print(f"Failed to retrieve data from page {page_number}: {response.status_code}")
         return []
 
 def fetch_set_results(result_url):
     response = requests.get(result_url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
+
         set_results = []
         cards = soup.find_all('div', class_='card')
 
@@ -75,10 +80,21 @@ def fetch_set_results(result_url):
 
         return set_results
     else:
+        print(f"Failed to retrieve set results from {result_url}: {response.status_code}")
         return []
 
 def is_matching_pattern(set_results):
-    if len(set_results) != 2:
+    """
+    Checks if the set results match the desired pattern (Set 1: 11-4 or less, Set 2: 11-4 or less, Set 3: 11-8 or less).
+
+    Args:
+        set_results (list): List of tuples containing player names and their set scores.
+
+    Returns:
+        bool: True if the set results match the pattern, False otherwise.
+    """
+    if len(set_results) != 2:  # Check for exactly 2 players
+        print("Invalid number of players. Expected 2.")
         return False
 
     player1_scores = None
@@ -91,16 +107,21 @@ def is_matching_pattern(set_results):
             player2_scores = scores
 
     if player1_scores is None or player2_scores is None:
+        print("Could not determine player scores.")
         return False
 
     if len(player1_scores) != 3 or len(player2_scores) != 3:
+        print(f"Invalid number of sets. Expected 3, found: {len(player1_scores)}")
         return False
 
-    return all(
-        [
-            (s1 == 11 and s2 <= 4) or (s2 == 11 and s1 <= 4) or (s1 == 11 and s2 <= 8) or (s2 == 11 and s1 <= 8)
-            for s1, s2 in zip(player1_scores, player2_scores)
-        ]
+    return (
+        (player1_scores[0] == 11 and player2_scores[0] <= 4) and
+        (player1_scores[1] == 11 and player2_scores[1] <= 4) and
+        (player1_scores[2] == 11 and player2_scores[2] <= 8)
+    ) or (
+        (player2_scores[0] == 11 and player1_scores[0] <= 4) and
+        (player2_scores[1] == 11 and player1_scores[1] <= 4) and
+        (player2_scores[2] == 11 and player1_scores[2] <= 8)
     )
 
 @app.route('/')
@@ -113,9 +134,11 @@ def fetch_matches():
     page_number = 1
 
     while True:
+        print(f"Fetching matches from page {page_number}...")
         new_matches = fetch_matches_from_page(page_number)
 
         if not new_matches:
+            print(f"No more matches found on page {page_number}.")
             break
 
         for match in new_matches:
@@ -124,9 +147,19 @@ def fetch_matches():
                 match['set_results'] = fetch_set_results(result_url)
 
                 if is_matching_pattern(match['set_results']):
+                    print(f"Match found that matches the pattern: {match['competition']} on {match['date_time'].strftime('%d/%m %H:%M')}")
+                    print(f"Players: {match['players']}")
                     found_matches.append(match)
 
         page_number += 1
+
+    if found_matches:
+        print("Matches found that meet the criteria:")
+        for match in found_matches:
+            print(f"Competition: {match['competition']}, Date and Time: {match['date_time'].strftime('%d/%m %H:%M')}")
+            print(f"Players: {match['players']}")
+    else:
+        print("No matches found that meet the criteria.")
 
     return jsonify(found_matches)
 

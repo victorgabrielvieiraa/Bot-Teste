@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Table Tennis Match Finder</title>
+  </head>
+  <body>
+    <div style="text-align: center; margin-top: 50px;">
+      <h1>Table Tennis Match Finder</h1>
+      <button onclick="fetchMatches()">Buscar Jogos no Padrão</button>
+      <div id="results" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+      function fetchMatches() {
+        fetch('/fetch_matches')
+          .then(response => response.json())
+          .then(data => {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (data.length > 0) {
+              data.forEach(match => {
+                const matchDiv = document.createElement('div');
+                matchDiv.style.marginBottom = '20px';
+
+                const competition = document.createElement('p');
+                competition.textContent = `Competition: ${match.competition}`;
+                matchDiv.appendChild(competition);
+
+                const dateTime = document.createElement('p');
+                dateTime.textContent = `Date and Time: ${new Date(match.date_time).toLocaleString()}`;
+                matchDiv.appendChild(dateTime);
+
+                const players = document.createElement('p');
+                players.textContent = `Players: ${match.players}`;
+                matchDiv.appendChild(players);
+
+                const setResults = document.createElement('p');
+                setResults.textContent = 'Set Results:';
+                matchDiv.appendChild(setResults);
+
+                match.set_results.forEach(result => {
+                  const resultDiv = document.createElement('div');
+                  resultDiv.textContent = `  ${result[0]}: ${result[1].join(', ')}`;
+                  matchDiv.appendChild(resultDiv);
+                });
+
+                resultsDiv.appendChild(matchDiv);
+              });
+            } else {
+              resultsDiv.textContent = 'No matches found that meet the criteria.';
+            }
+          });
+      }
+    </script>
+  </body>
+</html>
